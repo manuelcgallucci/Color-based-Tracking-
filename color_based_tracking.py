@@ -33,16 +33,31 @@ class ParticleFilter(object):
         self.n_particles = n_particles
         
         # Define the first histogram
-        self.hist = self.calculate_hsv_hist(first_roi_bgr, hist_size)
+        self.hist = calculate_hsv_hist(first_roi_bgr, hist_size)
         self.hist_size = hist_size
         self.lambda_ = lambda_
+
     def transition_state(self, frame):
         state_pred = self.state_prediction()
         state_pred = self.correct_size()
 
         histograms = self.calculate_hist(state_pred, frame)
         weights = self.compare_hist(histograms, self.hist)
+        self.last_particles = self.particles
+        self.particles = self.resample(state_pred, weights)
 
+        self.state = np.mean(self.particles, axis=0)
+        roi_bgr = frame[int(self.state[0]):int(self.state[0]+self.state[2]), int(self.state[1]):int(self.state[1]+self.state[3])]
+        self.hist = calculate_hsv_hist(roi_bgr, self.hist_size)
+
+
+        return self.state[0],self.state[1],self.state[2], self.state[3], self.particles, state_pred
+    
+    def resample(self, predictions, weights):
+        pos_indeces = np.arange(self.n_particles)
+        indeces = np.random.choice(pos_indeces, self.n_particles, p=weights)
+        return predictions[indeces]
+    
     def compare_hist(self, histograms, histogram_ref):
         
         weights = np.zeros((self.n_particles))
@@ -68,4 +83,7 @@ class ParticleFilter(object):
     
     def correct_size(self, predictions):
         """ Correct the size so the bb remains in the image"""
+        # np.clip(predictions[:,0],self.state[2]+1,self.window_size[0]-(1+self.state[2]),predictions[:,0])        
+        # np.clip(predictions[:,1],self.state[2]+1,self.window_size[1]-(1+self.state[2]),predictions[:,1])
+        # np.clip(predictions[:,2],self.min_square,self.max_square,predictions[:,2])
         return predictions
