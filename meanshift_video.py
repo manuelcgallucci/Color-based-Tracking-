@@ -2,26 +2,24 @@ import numpy as np
 import cv2
 import glob
 
-#cap = cv2.VideoCapture('videos/slow_traffic_small.mp4')
-cap = cv2.imread('sequences-train/bag-001.bmp')
-frameSize = (500,500)
-out = cv2.VideoWriter('bag.avi',cv2.VideoWriter_fourcc(*'DIVX'), 60, frameSize)
+video_name = 'bag'
 
-for filename in glob.glob('D:/images/*.jpg'):
-    img = cv2.imread(filename)
-    out.write(img)
+cap = cv2.VideoCapture('output/'+video_name+'.avi')
 
 # take first frame of the video
-#ret,frame = cap.read()
-frame = cap
+ret,frame = cap.read()
+
+# select initial location of window
+roi_coord = cv2.selectROI(frame)
+cv2.destroyAllWindows()
 
 # setup initial location of window
 # r,h,c,w - region of image
 #           simply hardcoded the values
-r,h,c,w = 200,20,300,20  
+r,h,c,w = int(roi_coord[1]),int(roi_coord[3]),int(roi_coord[0]),int(roi_coord[2])
 track_window = (c,r,w,h)
 
-# set up the ROI for tracking
+# # set up the ROI for tracking
 roi = frame[r:r+h, c:c+w]
 hsv_roi =  cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 mask = cv2.inRange(hsv_roi, np.array((0., 60.,32.)), np.array((180.,255.,255.)))
