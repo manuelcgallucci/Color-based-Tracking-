@@ -44,11 +44,8 @@ while(1):
         img2 = cv2.rectangle(frame, (x,y), (x+w,y+h), 255,2)
         cv2.imshow('img2',img2)
 
-        k = cv2.waitKey(60) & 0xff
-        if k == 27:
+        if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-        else:
-            cv2.imwrite(chr(k)+".jpg",img2)
 
     else:
         break
