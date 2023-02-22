@@ -3,6 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from color_based_tracking import ParticleFilter, calculate_hsv_hist
 
+# Todo use HSV channels (take the mean)
+# Correct the boundries of the color based so we dont go out 
+
 def plot_color_hist(histograms):
     # define colors to plot the histograms
     colors = ('k','g','c')
@@ -35,7 +38,7 @@ def main(hist_size=64):
     
     # Define the intial conditions of the model
     pFilter = ParticleFilter(roi_coord[1], roi_coord[0], roi_coord[3], roi_coord[2], roi_cropped, \
-            window_size=window_size, n_particles=100, dt=0.01, sigma=[1,1,0.1,0.1], hist_size=64, lambda_=20)
+            window_size=window_size, n_particles=100, dt=0.01, sigma=[10,10,1,1], hist_size=64, lambda_=20)
     
     # ==== Loop ===
     while(True):        
@@ -43,7 +46,8 @@ def main(hist_size=64):
         
         x,y,w,h,predictions_resampled, predictions = pFilter.transition_state(frame)
 
-        cv2.rectangle(frame,x+w,y+h,(0,0,255),thickness=2)
+        cv2.rectangle(frame,(roi_coord[1], roi_coord[0]),(roi_coord[1]+roi_coord[3], roi_coord[0]+roi_coord[2]),(255,255,0),thickness=2)
+        cv2.rectangle(frame,(int(x),int(y)),(int(x+w),int(y+h)),(0,0,255),thickness=2)
 
         for n in range(pFilter.n_particles):
             cx = int(predictions[n,0] + predictions[n,2] / 2.0)
