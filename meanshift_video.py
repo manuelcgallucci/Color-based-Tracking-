@@ -32,13 +32,12 @@ cv2.normalize(roi_hist,roi_hist,0,255,cv2.NORM_MINMAX)
 # Setup the termination criteria, either 10 iteration or move by at least 1 pt
 term_crit = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
 
-# Writer to save video file
-if cap.isOpened(): 
-    # get cap properties
-    width  = cap.get(cv2.CAP_PROP_FRAME_WIDTH)   # float `width`
-    height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float `height`
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    frameSize = (width,height)
+# Writer to save video file:
+# get cap properties
+width  = cap.get(cv2.CAP_PROP_FRAME_WIDTH)   # float `width`
+height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float `height`
+fps = cap.get(cv2.CAP_PROP_FPS)
+frameSize = (width,height)
 
 writer = cv2.VideoWriter('./output/'+video_name+'_meanshift'+'.mp4', cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), fps, frameSize)
 
