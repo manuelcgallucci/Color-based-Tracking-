@@ -15,7 +15,7 @@ def plot_color_hist(histograms):
         plt.plot(histograms[:,i],color=color, label=names[i])
     plt.legend()
     plt.title('Image Histogram ' + names[0]+names[1]+names[2])
-    plt.show()  
+    plt.show()
 
 def main(hist_size=64):
     # ==== Initialization ===
