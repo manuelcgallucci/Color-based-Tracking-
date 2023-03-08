@@ -7,7 +7,7 @@ video_name = 'bag'
 # parameter to determine the rate of change of the reference histogram (lower = less change)
 alpha = 0.1
 
-cap = cv2.VideoCapture('output/'+video_name+'.avi')
+cap = cv2.VideoCapture('output/'+video_name+'.mp4')
 
 # take first frame of the video
 ret,frame = cap.read()
@@ -34,12 +34,14 @@ term_crit = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
 
 # Writer to save video file:
 # get cap properties
-width  = cap.get(cv2.CAP_PROP_FRAME_WIDTH)   # float `width`
-height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float `height`
-fps = cap.get(cv2.CAP_PROP_FPS)
+width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))   # float `width` to int
+height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))  # float `height` to int
+fps = int(cap.get(cv2.CAP_PROP_FPS))
 frameSize = (width,height)
+print("fps:",fps)
+print("frameSize",frameSize)
 
-writer = cv2.VideoWriter('./output/'+video_name+'_meanshift'+'.mp4', cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), fps, frameSize)
+writer = cv2.VideoWriter('./output/'+video_name+'_meanshift.mp4', cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), fps, frameSize)
 
 # histogram updating parameter
 roi_hist_iter = roi_hist
@@ -60,6 +62,7 @@ while(1):
         mask = cv2.inRange(hsv_roi, np.array((0., 60.,32.)), np.array((180.,255.,255.)))
         roi_hist_iter = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
         cv2.normalize(roi_hist_iter,roi_hist_iter,0,255,cv2.NORM_MINMAX)
+        # Updated histogram is proportional to the original and the recalculated in this frame by a factor of alpha
         roi_hist_iter = alpha*roi_hist + (1-alpha)*roi_hist_iter
 
         # draw it on image
