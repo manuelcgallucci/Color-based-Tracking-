@@ -32,6 +32,16 @@ cv2.normalize(roi_hist,roi_hist,0,255,cv2.NORM_MINMAX)
 # Setup the termination criteria, either 10 iteration or move by at least 1 pt
 term_crit = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
 
+# Writer to save video file
+if cap.isOpened(): 
+    # get cap properties
+    width  = cap.get(cv2.CAP_PROP_FRAME_WIDTH)   # float `width`
+    height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float `height`
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    frameSize = (width,height)
+
+writer = cv2.VideoWriter('./output/'+video_name+'_meanshift'+'.mp4', cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), fps, frameSize)
+
 # histogram updating parameter
 roi_hist_iter = roi_hist
 while(1):
@@ -57,6 +67,9 @@ while(1):
         img2 = cv2.rectangle(frame, (x,y), (x+w,y+h), 255,2)
         cv2.imshow('img2',img2)
 
+        # write frame to output
+        writer.write(frame)
+
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
@@ -65,3 +78,5 @@ while(1):
 
 cv2.destroyAllWindows()
 cap.release()
+writer.release()
+
