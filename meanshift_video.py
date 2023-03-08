@@ -3,7 +3,7 @@ import cv2
 import glob
 
 # name of the video sequence to study
-video_name = 'bag'
+video_name = str(input("Enter filename of video sequence to process: "))
 # parameter to determine the rate of change of the reference histogram (lower = less change)
 alpha = 0.1
 
