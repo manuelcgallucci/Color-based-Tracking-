@@ -19,8 +19,7 @@ def get_bb_score(x1, y1, w1, h1, x2, y2, w2, h2):
     return  np.sqrt(((x1 + w1//2) - (x2 + w2//2))**2 + ((y1 + h1//2) - (y2 + h2//2))**2)
 
 
-
-
+'''
 ####A rajouter dans le main.py
 from functions import get_bb_from_mask, get_bb_score
 
@@ -32,16 +31,17 @@ i=0
 
 while True: 
     frame = cv.imread('sequences-train/'+ name + '-'+ str(i).zfill(3) + '.bmp')
-    x,y,w,h,predictions_resampled, predictions = pFilter.transition_state(frame)
+    #x,y,w,h,predictions_resampled, predictions = pFilter.transition_state(frame)
 
-    mask_path = 'sequences-train/'+ name + '-'+ str(i).zfill(3) + '.png'
+    mask_path = 'sequences-train/'+ name +'/' +name + '-'+ str(i).zfill(3) + '.png'
 
     xm, ym, wm, hm = get_bb_from_mask(mask_path)
-    score.append(x,y,w,h,xm, ym, wm, hm)
+    #score.append(x,y,w,h,xm, ym, wm, hm)
 
 
 
 import matplotlib.pyplot as plt
 plt.plot(score, title= "distance between bb center through iterations")
 plt.show()
+'''
 

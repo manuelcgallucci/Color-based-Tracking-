@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import glob
+from functions import get_bb_from_mask, get_bb_score
 
 # name of the video sequence to study
 video_name = str(input("Enter filename of video sequence to process: "))
@@ -8,13 +9,15 @@ video_name = str(input("Enter filename of video sequence to process: "))
 alpha = 0.1
 
 cap = cv2.VideoCapture('output/'+video_name+'.mp4')
+mask_path = 'sequences-train/'+ video_name +'/'+ video_name + '-'+ str(1).zfill(3) + '.png'
+
 
 # take first frame of the video
 ret,frame = cap.read()
 
 # select initial location of window
-roi_coord = cv2.selectROI(frame)
-cv2.destroyAllWindows()
+roi_coord = get_bb_from_mask(mask_path)
+#cv2.destroyAllWindows()
 
 # setup initial location of window
 # r,h,c,w - region of image
@@ -42,7 +45,8 @@ print("fps:",fps)
 print("frameSize",frameSize)
 
 writer = cv2.VideoWriter('./output/'+video_name+'_meanshift.mp4', cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), fps, frameSize)
-
+score = []
+i=1
 # histogram updating parameter
 roi_hist_iter = roi_hist
 while(1):
@@ -57,6 +61,11 @@ while(1):
 
         # update reference histogram
         x,y,w,h = track_window
+        mask_path = 'sequences-train/'+ video_name +'/'+ video_name + '-'+ str(i).zfill(3) + '.png'
+
+        xm, ym, wm, hm = get_bb_from_mask(mask_path)
+        score.append(get_bb_score(x,y,w,h, xm, ym, wm, hm))
+
         roi = frame[y:y+h, x:x+w]
         hsv_roi = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(hsv_roi, np.array((0., 60.,32.)), np.array((180.,255.,255.)))
@@ -74,11 +83,18 @@ while(1):
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-
+    
     else:
         break
+
+    i+=1
 
 cv2.destroyAllWindows()
 cap.release()
 writer.release()
+
+import matplotlib.pyplot as plt
+plt.plot(score)
+plt.title("distance between bb center through iterations")
+plt.show()
 
