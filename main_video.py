@@ -61,8 +61,6 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64, s
 		cv2.normalize(roi_hist,roi_hist,0,255,cv2.NORM_MINMAX)
 		# Setup the termination criteria, either 10 iteration or move by at least 1 pt
     	term_crit = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
-		# Define first iterable histogram
-		roi_hist_iter = roi_hist
 
 	# ==== Loop ===
 	for i, filename in enumerate(glob.glob(dir_imgs + video_name +'/*.bmp')):
@@ -77,7 +75,7 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64, s
 		if type_== 'probabilistic':
 			x,y,w,h,predictions_resampled, predictions, weights = pFilter.transition_state(frame)
 		elif type_== 'meanshift':
-			x,y,w,h,roi_hist_iter = meanshift(frame, roi_hist, roi_hist_iter, term_crit, alpha=0.9)
+			x,y,w,h = meanshift(frame, roi_hist, term_crit)
 		
 		# Compare to mask and append score
 		mask_path = dir_masks + video_name +"/"+ video_name + '-'+ str(i+1).zfill(3) + '.png'
