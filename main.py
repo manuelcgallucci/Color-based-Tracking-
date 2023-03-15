@@ -41,7 +41,9 @@ def main(hist_size=64):
     
     # Define the intial conditions of the model
     pFilter = ParticleFilter(roi_coord[0], roi_coord[1], roi_coord[2], roi_coord[3], roi_cropped, \
-            window_size=window_size, n_particles=100, dt=0.01, sigma=[10,10,1.0,1.0], hist_size=12, lambda_=20, min_size=20, max_size=500)
+            window_size=window_size, n_particles=200, dt=0.1, sigma=[10,10,0.5,0.5], hist_size=32, lambda_=20, 
+            min_size_x=int(roi_coord[2]*0.8), max_size_x=int(roi_coord[2]*1.2),
+            min_size_y=int(roi_coord[3]*0.8), max_size_y=int(roi_coord[3]*1.2))
 
 
     #cv2.namedWindow('Best histogram')
@@ -54,7 +56,6 @@ def main(hist_size=64):
         
         x,y,w,h,predictions_resampled, predictions, weights = pFilter.transition_state(frame)
         
-
         # hist_best = pFilter.get_best_hist()
         # hist_base = pFilter.get_base_hist()
 
@@ -86,13 +87,6 @@ def main(hist_size=64):
 
         if stop_program or (cv2.waitKey(1) & 0xFF == ord('q')):
             break 
-
-        
-        while not cv2.waitKey(1) & 0xFF == ord('r'):
-            #if cv2.waitKey(20) & 0xFF == ord('q'):
-            #    stop_program = True
-            pass
-
 
     cap.release()
     cv2.destroyAllWindows()
