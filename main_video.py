@@ -17,7 +17,7 @@ def plot_color_hist(histograms):
     plt.title('Image Histogram ' + names[0]+names[1]+names[2])
     plt.show()
 
-def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64):
+def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64, show=False):
 	'''
 	dir_imgs and dir_masks with '/' at the end
 	type_ = 'probabilistic' or 'meanshift'
@@ -49,7 +49,7 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64):
 	if type_== 'probabilistic':
 
 		pFilter = ParticleFilter(roi_coord[0], roi_coord[1], roi_coord[2], roi_coord[3], roi, \
-            window_size=frameSize, n_particles=500, dt=0.2, sigma=[50,50,5.5,5.5], hist_size=16, lambda_=20, 
+            window_size=frameSize, n_particles=1000, dt=0.2, sigma=[5,5,0.5,0.5], hist_size=16, lambda_=20, 
             min_size_x=int(roi_coord[2]*0.8), max_size_x=int(roi_coord[2]*1.2),
             min_size_y=int(roi_coord[3]*0.8), max_size_y=int(roi_coord[3]*1.2))
 		
@@ -77,11 +77,11 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64):
 		
 		# Draw rectangle
 		cv2.rectangle(frame,(int(x),int(y)),(int(x+w),int(y+h)),(0,0,255),thickness=2)
-		
+		cv2.rectangle(frame,(int(xm),int(ym)),(int(xm+wm),int(ym+hm)),(0,255,0),thickness=2)
 		# write frame to output
 		video_writer.write(frame)
 		
-		cv2.imshow('frame',frame)
+		if show: cv2.imshow('frame',frame)
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break      
 	
@@ -89,13 +89,18 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64):
 
 	plt.figure()
 	plt.plot(score)
-	plt.title("Score")
-	plt.show()
+	plt.title("Score squence:{:s}".format(video_name))
+	plt.xlabel("Frames")
+	if show: plt.show()
+	plt.savefig("{:s}_score.png".format(video_name))
 	plt.close()
 
 if __name__=="__main__":
 	dir_imgs = "./sequences-train/"
 	dir_mask = "./sequences-train/"
-	video_name = "rhino"
+	video_names = ["bag", "book", "bear", "bag", "camel", "rhino", "swan"]
 	type_ = "probabilistic"
-	main(dir_imgs, dir_mask, video_name, type_=type_)
+	show = False
+	
+	for video_name in video_names:		
+		main(dir_imgs, dir_mask, video_name, type_=type_, show=show)
