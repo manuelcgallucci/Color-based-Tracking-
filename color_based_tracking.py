@@ -1,24 +1,32 @@
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+import sys
 
 def calculate_hsv_hist(bgr_img, hist_size):
     hsv_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2HSV)
 
     # Limit H bigger than 0.1 and S bigger than 0.2, No limit for V
     # mask = cv2.inRange(hsv_img, (25, 50, 0), (255, 255, 255))
-
     roi_hist = np.zeros((hist_size,3))
     for i in range(3):
-        roi_hist[:,i] = cv2.calcHist(hsv_img, [i+1], None, [hist_size], [0,hist_size])[:,0]
-        roi_hist[:,i] = roi_hist[:,i] / np.sum(roi_hist[:,i])
+        try:
+            roi_hist[:,i] = cv2.calcHist(hsv_img, [i+1], None, [hist_size], [0,hist_size])[:,0]
+            if np.sum(roi_hist[:,i]) != 0.0:
+                roi_hist[:,i] = roi_hist[:,i] / np.sum(roi_hist[:,i])
+        except Exception as e:
+            # Code comes here when the bb goes to much to the side of the screen and the cropped image becomes very small 
+            roi_hist = -1 * np.ones((hist_size,3))
+            break
+            # sys.exit()
+
     # cv2.normalize(roi_hist, roi_hist, 0, 255, cv2.NORM_MINMAX)
 
     return roi_hist
 
 class ParticleFilter(object):
-    def __init__(self, x0, y0, w0, h0, first_roi_bgr, window_size, n_particles=10, dt=1, sigma=[1,1,0.1,0.1], hist_size=64, lambda_=20, \
-                min_size_x=20, max_size_x=500, min_size_y=20, max_size_y=500):
+    def __init__(self, x0, y0, w0, h0, first_roi_bgr, window_size, first_frame, n_particles=10, dt=1, sigma=[1,1,0.1,0.1], hist_size=64, lambda_=20, \
+                min_size_x=20, max_size_x=500, min_size_y=20, max_size_y=500, use_background=False):
         # Define the initial state of the system
         self.state = np.array([x0, y0, w0, h0])
         self.n_state = self.state.shape[0]
@@ -49,9 +57,15 @@ class ParticleFilter(object):
         self.max_size_y = max_size_y
         self.window_size = window_size
 
+        self.margin = 1
         # TODO remove this once  
         self.weights = np.ones((n_particles,1)) / n_particles
         self.histograms = None
+
+        self.use_background = use_background
+        self.hist_bgd = None
+        if self.use_background:
+            self.hist_bgd = self.calculate_hist_bgd(first_frame, np.array((x0, y0, w0, h0)))
 
 
     def transition_state(self, frame):
@@ -60,8 +74,11 @@ class ParticleFilter(object):
         state_pred = self.correct_size(state_pred)
 
         histograms = self.calculate_hist(state_pred, frame)
-        weights = self.compare_hist(histograms, self.hist)
 
+        if self.use_background:
+            weights = self.compare_hist(histograms, self.hist)
+        else:
+            weights = self.compare_hist(histograms, self.hist)
 
         # Save the weights and histograms (not needed in general)
         self.weights = weights
@@ -124,6 +141,41 @@ class ParticleFilter(object):
             histograms[k,:,:] = calculate_hsv_hist(bgt_roi_cropped, self.hist_size)
         return histograms
 
+
+    def compare_hist_bgd(self, histograms, histogram_ref):
+        
+        weights = np.zeros((self.n_particles))
+        # For the moment only use the first dimension of the histogram
+        for m in range(self.n_particles):
+            weights[m] = np.exp(self.lambda_ * (np.sum(histograms[m,:,:] * histogram_ref[:,:]) - np.sum(histograms[m,:,:] * self.hist_bgd[:,:])))
+            # weights[m] = np.exp(self.lambda_ * np.sqrt(np.sum(histograms[m,:,:] * histogram_ref[:,:])))
+        np.nan_to_num(weights, copy=False, nan=0.0)
+        return weights / np.sum(weights)
+
+    def calculate_hist_bgd(self, frame, roi):
+
+        frame_up = frame[:roi[1],:]
+        frame_down = frame[roi[1]+roi[3]:,:]
+        
+        frame_left = frame[roi[1]:roi[1]+roi[3],:roi[0]]
+        frame_right = frame[roi[1]:roi[1]+roi[3],roi[0]+roi[2]:]
+
+        frames = [frame_down, frame_left, frame_right, frame_up]
+        hist_ = np.zeros((self.hist_size, 3))
+        for frame_ in frames:
+            hist_ += calculate_hsv_hist(frame_, self.hist_size)
+
+        # frames = [frame_down, frame_left, frame_right, frame_up]
+        # dir_ = ["down", "left", "right", "up"]
+        # #calculate_hsv_hist(bgr_img, hist_size)
+        # for k, frame_ in enumerate(frames):
+        #     plt.figure()
+        #     plt.imshow(frame_)
+        #     plt.title("Frame {:s}".format(dir_[k]))
+        #     plt.savefig("frame_{:s}.png".format(dir_[k]))
+        #     plt.close()
+        return hist_ / 4
+
     def state_prediction(self):
         noise = self.sigma_v*np.random.randn(self.n_particles,self.n_state)
         particles = np.dot(self.particles, self.A) + np.dot(self.last_particles, self.B) + noise
@@ -132,10 +184,11 @@ class ParticleFilter(object):
     def correct_size(self, predictions):
         """ Correct the size so the bb remains in the image"""
         # x,y bigger than 0 but smaller than the window size
-        np.clip(predictions[:,0], 1, self.window_size[0]-1, predictions[:,0])        
-        np.clip(predictions[:,1], 1, self.window_size[1]-1, predictions[:,1])
+        np.clip(predictions[:,0], 1, self.window_size[0]-self.min_size_x, predictions[:,0])        
+        np.clip(predictions[:,1], 1, self.window_size[1]-self.min_size_y, predictions[:,1])
         
         # width and height within the range
+        #lim_x = predictions[:,0] + self.min_size_x - self.window_size[0]
         np.clip(predictions[:,2], self.min_size_x, self.max_size_x, predictions[:,2])
         np.clip(predictions[:,3], self.min_size_y, self.max_size_y, predictions[:,3])
         return predictions
