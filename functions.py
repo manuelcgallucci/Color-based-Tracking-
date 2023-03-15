@@ -1,5 +1,6 @@
 import cv2 as cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
 def get_bb_from_mask(mask_path):
     ''' Return the bounding box coordinates that fits the best the mask'''
@@ -45,8 +46,7 @@ plt.plot(score, title= "distance between bb center through iterations")
 plt.show()
 '''
 
-
-def meanshift_function(video_name, alpha):
+def meanshift_function(video_name, show_video = True):
     cap = cv2.VideoCapture('output/'+video_name+'.mp4')
     mask_path = 'sequences-train/'+ video_name +'/'+ video_name + '-'+ str(1).zfill(3) + '.png'
 
@@ -65,13 +65,16 @@ def meanshift_function(video_name, alpha):
     ## INITIALISATION
     roi = frame[r:r+h, c:c+w]
     hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-    mask = cv2.inRange(hsv_roi, np.array((0., 60.,32.)), np.array((180.,255.,255.)))
+    mask = cv2.inRange(hsv_roi, np.array((0., 25., 50.)), np.array((180.,255.,255.)))
     init_roi_hist = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
     cv2.normalize(init_roi_hist,init_roi_hist,0,255,cv2.NORM_MINMAX)
 
     score = []
+    hist_list = []
     roi_hist_iter = init_roi_hist
+    hist_list.append(roi_hist_iter)
     i = 1
+
 
     while(1):
         ret ,frame = cap.read()
@@ -79,25 +82,28 @@ def meanshift_function(video_name, alpha):
         if ret == True:
             # MEANSHIFT
             hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-            dst = cv2.calcBackProject([hsv],[0],roi_hist_iter,[0,180],1)
+            dst = cv2.calcBackProject([hsv],[0],init_roi_hist,[0,180],1)
             ret, track_window = cv2.meanShift(dst, track_window, term_crit)
-            
-
-
-            ## UPDATING THE HISTOGRAM
             x,y,w,h = track_window
+            # Try to instead of doing a ponderate mean of the 2 histograms, do a translation of the median / search for MAP (variance pondered by the median)
+
+            
+            ## UPDATING THE HISTOGRAM
+            
+            
             roi = frame[y:y+h, x:x+w]
             hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-            mask = cv2.inRange(hsv_roi, np.array((0., 60.,32.)), np.array((180.,255.,255.)))
+            mask = cv2.inRange(hsv_roi, np.array((0., 12.,25.)), np.array((180.,255.,255.)))
             roi_hist_iter = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
             cv2.normalize(roi_hist_iter,roi_hist_iter,0,255,cv2.NORM_MINMAX)
-
             # Updated histogram is proportional to the original and the recalculated in this frame by a factor of alpha
-            roi_hist_iter = alpha*init_roi_hist + (1-alpha)*roi_hist_iter
-
+            #roi_hist_iter = alpha*init_roi_hist + (1-alpha)*roi_hist_iter
+            hist_list.append(roi_hist_iter)
+            
             ## DRAWING
-            img2 = cv2.rectangle(frame, (x,y), (x+w,y+h), 255,2)
-            cv2.imshow('Image video',img2)
+            if show_video:
+                img2 = cv2.rectangle(frame, (x,y), (x+w,y+h), 255,2)
+                cv2.imshow('Image video',img2)
             
             ## SCORE
             mask_path = 'sequences-train/'+ video_name +'/'+ video_name + '-'+ str(i).zfill(3) + '.png'
@@ -115,6 +121,21 @@ def meanshift_function(video_name, alpha):
 
     cv2.destroyAllWindows()
     cap.release()
-    print('One meanshift have been performed')
+    print('Meanshift have been performed for ' + video_name)
 
-    return score
+    return score , hist_list
+
+'''
+names = ['bag', 'bear', 'book', 'camel', 'rhino', 'swan']
+with plt.style.context('bmh'):
+    fig, ax = plt.subplots(2,3, figsize=(20,10))
+    fig.suptitle('Histogram for each last bounding box', fontsize = 20)
+    for i,name in enumerate(names):
+        score, hist_list = meanshift_function(name, False)
+        ax[i%2, i%3].set_title(name)
+        #ax[i%2, i%3].axis('off')
+        ax[i%2, i%3].plot(hist_list[-1])
+
+    fig.savefig('./Plots/histogram_visual_last.jpg')
+plt.show()
+'''
