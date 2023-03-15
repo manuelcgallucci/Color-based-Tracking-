@@ -78,12 +78,18 @@ while(1):
         img2 = cv2.rectangle(frame, (x,y), (x+w,y+h), 255,2)
         cv2.imshow('img2',img2)
 
+<<<<<<< Updated upstream
         # write frame to output
         writer.write(frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     
+=======
+        if cv2.waitKey(30) & 0xFF == ord('q'):
+            break
+            
+>>>>>>> Stashed changes
     else:
         break
 
