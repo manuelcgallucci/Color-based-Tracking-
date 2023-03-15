@@ -4,7 +4,7 @@ import glob
 import matplotlib.pyplot as plt
 from color_based_tracking import ParticleFilter, calculate_hsv_hist
 from functions import get_bb_from_mask, get_bb_score
-
+from meanshift import meanshift
 
 def plot_color_hist(histograms):
     # define colors to plot the histograms
@@ -52,11 +52,24 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64, s
             window_size=frameSize, n_particles=1000, dt=0.2, sigma=[5,5,0.5,0.5], hist_size=16, lambda_=20, 
             min_size_x=int(roi_coord[2]*0.8), max_size_x=int(roi_coord[2]*1.2),
             min_size_y=int(roi_coord[3]*0.8), max_size_y=int(roi_coord[3]*1.2))
-		
+	
+	elif type_=='meanshift':
+		# Setup the ROI for tracking
+		hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+		mask = cv2.inRange(hsv_roi, np.array((0., 60.,32.)), np.array((180.,255.,255.)))
+		roi_hist = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
+		cv2.normalize(roi_hist,roi_hist,0,255,cv2.NORM_MINMAX)
+		# Setup the termination criteria, either 10 iteration or move by at least 1 pt
+    	term_crit = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
+		# Define first iterable histogram
+		roi_hist_iter = roi_hist
+
 	# ==== Loop ===
 	for i, filename in enumerate(glob.glob(dir_imgs + video_name +'/*.bmp')):
+		# Skip first image
 		if i == 0:
 			continue
+		
 		# Read frame
 		frame = cv2.imread(filename)
 		
@@ -64,7 +77,7 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64, s
 		if type_== 'probabilistic':
 			x,y,w,h,predictions_resampled, predictions, weights = pFilter.transition_state(frame)
 		elif type_== 'meanshift':
-			pass
+			x,y,w,h,roi_hist_iter = meanshift(frame, roi_hist, roi_hist_iter, term_crit, alpha=0.9)
 		
 		# Compare to mask and append score
 		mask_path = dir_masks + video_name +"/"+ video_name + '-'+ str(i+1).zfill(3) + '.png'
