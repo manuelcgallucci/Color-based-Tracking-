@@ -32,7 +32,7 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64, s
 	mask_path = dir_masks + video_name +"/"+ video_name + '-'+ str(1).zfill(3) + '.png'
 	roi_coord = get_bb_from_mask(mask_path)
 	# roi_coord: is x,y,w,h
-	y,h,x,w = int(roi_coord[1]),int(roi_coord[3]),int(roi_coord[0]),int(roi_coord[2])
+	x,y,w,h = int(roi_coord[0]),int(roi_coord[1]),int(roi_coord[2]),int(roi_coord[3])
 	track_window = (x,y,w,h)
 	roi = frame[y:y+h, x:x+w]
 
@@ -75,7 +75,8 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64, s
 		if type_== 'probabilistic':
 			x,y,w,h,predictions_resampled, predictions, weights = pFilter.transition_state(frame)
 		elif type_== 'meanshift':
-			x,y,w,h = meanshift(frame, track_window,roi_hist, term_crit)
+			track_window = meanshift(frame, track_window, roi_hist, term_crit)
+			x,y,w,h = track_window
 		
 		# Compare to mask and append score
 		mask_path = dir_masks + video_name +"/"+ video_name + '-'+ str(i+1).zfill(3) + '.png'
@@ -83,11 +84,9 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64, s
 		score.append(get_bb_score(x,y,w,h, xm, ym, wm, hm))
 		# TODO: add output centroids.npy
 		
-		
-		
 		# Draw rectangle
-		cv2.rectangle(frame,(int(x),int(y)),(int(x+w),int(y+h)),(0,0,255),thickness=2)
 		cv2.rectangle(frame,(int(xm),int(ym)),(int(xm+wm),int(ym+hm)),(0,255,0),thickness=2)
+		cv2.rectangle(frame, (x,y), (x+w,y+h), (0,0,255), thickness=2)
 		# write frame to output
 		video_writer.write(frame)
 		
@@ -108,7 +107,7 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64, s
 if __name__=="__main__":
 	dir_imgs = "./sequences-train/"
 	dir_mask = "./sequences-train/"
-	video_names = ["bag", "book", "bear", "bag", "camel", "rhino", "swan"]
+	video_names = ["bag"]#, "book", "bear", "bag", "camel", "rhino", "swan"]
 	type_ = "meanshift"
 	show = False
 	
