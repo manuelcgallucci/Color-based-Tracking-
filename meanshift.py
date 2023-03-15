@@ -1,4 +1,6 @@
-def meanshift(frame, roi_hist, term_crit)
+import cv2
+
+def meanshift(frame, track_window, roi_hist, term_crit):
 
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     dst = cv2.calcBackProject([hsv],[0],roi_hist,[0,180],1)

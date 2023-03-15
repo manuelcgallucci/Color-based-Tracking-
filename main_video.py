@@ -32,18 +32,18 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64, s
 	mask_path = dir_masks + video_name +"/"+ video_name + '-'+ str(1).zfill(3) + '.png'
 	roi_coord = get_bb_from_mask(mask_path)
 	# roi_coord: is x,y,w,h
-	r,h,c,w = int(roi_coord[1]),int(roi_coord[3]),int(roi_coord[0]),int(roi_coord[2])
-	# track_window = (c,r,w,h)
-	roi = frame[r:r+h, c:c+w]
+	y,h,x,w = int(roi_coord[1]),int(roi_coord[3]),int(roi_coord[0]),int(roi_coord[2])
+	track_window = (x,y,w,h)
+	roi = frame[y:y+h, x:x+w]
 
 	# Initialize performance metrics and outputs
 	score = []
 	fps = 24
-	video_writer = cv2.VideoWriter('./output/{:s}_{:s}.mp4'.format(video_name, type_), cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), fps, frameSize)
+	video_writer = cv2.VideoWriter('./output/{:s}/{:s}_{:s}.mp4'.format(type_, video_name, type_), cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), fps, frameSize)
 
 	# roi_hist = calculate_hsv_hist(roi, hist_size)
 	# plot_color_hist(roi_hist)
-	print("Coords:", roi_coord)
+	# print("Coords:", roi_coord)
 
 	# Define the intial conditions of the model
 	if type_== 'probabilistic':
@@ -60,7 +60,7 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64, s
 		roi_hist = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
 		cv2.normalize(roi_hist,roi_hist,0,255,cv2.NORM_MINMAX)
 		# Setup the termination criteria, either 10 iteration or move by at least 1 pt
-    	term_crit = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
+		term_crit = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
 
 	# ==== Loop ===
 	for i, filename in enumerate(glob.glob(dir_imgs + video_name +'/*.bmp')):
@@ -75,11 +75,10 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64, s
 		if type_== 'probabilistic':
 			x,y,w,h,predictions_resampled, predictions, weights = pFilter.transition_state(frame)
 		elif type_== 'meanshift':
-			x,y,w,h = meanshift(frame, roi_hist, term_crit)
+			x,y,w,h = meanshift(frame, track_window,roi_hist, term_crit)
 		
 		# Compare to mask and append score
 		mask_path = dir_masks + video_name +"/"+ video_name + '-'+ str(i+1).zfill(3) + '.png'
-		print(mask_path)
 		xm, ym, wm, hm = get_bb_from_mask(mask_path)
 		score.append(get_bb_score(x,y,w,h, xm, ym, wm, hm))
 		# TODO: add output centroids.npy
@@ -100,17 +99,17 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64, s
 
 	plt.figure()
 	plt.plot(score)
-	plt.title("Score squence:{:s}".format(video_name))
+	plt.title("Score squence:{:s} {:s}".format(video_name, type_))
 	plt.xlabel("Frames")
 	if show: plt.show()
-	plt.savefig("{:s}_score.png".format(video_name))
+	plt.savefig("./output/{:s}/{:s}_score_{:s}.png".format(type_,video_name, type_))
 	plt.close()
 
 if __name__=="__main__":
 	dir_imgs = "./sequences-train/"
 	dir_mask = "./sequences-train/"
 	video_names = ["bag", "book", "bear", "bag", "camel", "rhino", "swan"]
-	type_ = "probabilistic"
+	type_ = "meanshift"
 	show = False
 	
 	for video_name in video_names:		
