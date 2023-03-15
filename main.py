@@ -14,17 +14,12 @@ def plot_color_hist(histograms, title='Image Histogram ', save=None):
     for i,color in enumerate(colors):
         plt.plot(histograms[:,i],color=color, label=names[i])
     plt.legend()
-<<<<<<< Updated upstream
-    plt.title('Image Histogram ' + names[0]+names[1]+names[2])
-    plt.show()
-=======
     plt.title(title + names[0]+names[1]+names[2])
     if save is None:
         plt.show()  
     else:
         plt.savefig(save)
     plt.close()
->>>>>>> Stashed changes
 
 def main(hist_size=64):
     # ==== Initialization ===
