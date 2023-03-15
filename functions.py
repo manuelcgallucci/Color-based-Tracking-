@@ -4,7 +4,6 @@ import numpy as np
 def get_bb_from_mask(mask_path):
     ''' Return the bounding box coordinates that fits the best the mask'''
     mask = cv.imread(mask_path, cv.IMREAD_GRAYSCALE)
-    
     xid = np.where(np.sum(mask, axis=0) != 0)
     x   = np.min(xid)
     w   = np.max(xid) - x
