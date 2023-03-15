@@ -18,7 +18,7 @@ def calculate_hsv_hist(bgr_img, hist_size):
 
 class ParticleFilter(object):
     def __init__(self, x0, y0, w0, h0, first_roi_bgr, window_size, n_particles=10, dt=1, sigma=[1,1,0.1,0.1], hist_size=64, lambda_=20, \
-                min_size=20, max_size=500):
+                min_size_x=20, max_size_x=500, min_size_y=20, max_size_y=500):
         # Define the initial state of the system
         self.state = np.array([x0, y0, w0, h0])
         self.n_state = self.state.shape[0]
@@ -43,8 +43,10 @@ class ParticleFilter(object):
         self.hist_size = hist_size
         self.lambda_ = lambda_
 
-        self.min_size = min_size
-        self.max_size = max_size
+        self.min_size_x = min_size_x
+        self.max_size_x = max_size_x
+        self.min_size_y = min_size_y
+        self.max_size_y = max_size_y
         self.window_size = window_size
 
         # TODO remove this once  
@@ -134,6 +136,6 @@ class ParticleFilter(object):
         np.clip(predictions[:,1], 1, self.window_size[1]-1, predictions[:,1])
         
         # width and height within the range
-        np.clip(predictions[:,2], self.min_size, self.max_size, predictions[:,2])
-        np.clip(predictions[:,3], self.min_size, self.max_size, predictions[:,3])
+        np.clip(predictions[:,2], self.min_size_x, self.max_size_x, predictions[:,2])
+        np.clip(predictions[:,3], self.min_size_y, self.max_size_y, predictions[:,3])
         return predictions
