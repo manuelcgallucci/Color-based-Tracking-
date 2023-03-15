@@ -7,6 +7,5 @@ def meanshift(frame, track_window, roi_hist, term_crit):
 
     # apply meanshift to get the new location
     ret, track_window = cv2.meanShift(dst, track_window, term_crit)
-    x,y,w,h = track_window
 
-    return x,y,w,h
+    return track_window
