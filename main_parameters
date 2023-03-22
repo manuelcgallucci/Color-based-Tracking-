@@ -1,0 +1,129 @@
+import cv2
+import numpy as np
+import glob
+import matplotlib.pyplot as plt
+from color_based_tracking import ParticleFilter, calculate_hsv_hist
+from functions import get_bb_from_mask, get_bb_score, get_bb_iou
+from meanshift import meanshift
+import multiprocessing as mp
+
+def plot_color_hist(histograms):
+    # define colors to plot the histograms
+    colors = ('k','g','c')
+    names = ("h", 's', 'v')
+    # compute and plot the image histograms
+    for i,color in enumerate(colors):
+        plt.plot(histograms[:,i],color=color, label=names[i])
+    plt.legend()
+    plt.title('Image Histogram ' + names[0]+names[1]+names[2])
+    plt.show()
+
+def run_model(mask_bb, frames, params):
+
+    n_particles=params["n_particles"]
+    dt=params["dt"]
+    sigma=params["sigma"]
+    hist_size=params["hist_size"]
+    use_background=params["use_background"]
+
+    # ==== Initialization ===
+    frame = frames[0]
+    height, width, layers = frame.shape
+    frameSize = (width,height)
+    
+    roi_coord = mask_bb[0]
+    # roi_coord: is x,y,w,h
+    y,h,x,w = int(roi_coord[1]),int(roi_coord[3]),int(roi_coord[0]),int(roi_coord[2])
+    roi = frame[y:y+h, x:x+w]
+    
+    # Define the intial conditions of the model
+    pFilter = ParticleFilter(roi_coord[0], roi_coord[1], roi_coord[2], roi_coord[3], roi, frameSize, \
+        frame, n_particles=n_particles, dt=dt, sigma=sigma, hist_size=hist_size, lambda_=10, \
+        min_size_x=int(roi_coord[2]*0.8), max_size_x=int(roi_coord[2]*1.2), \
+        min_size_y=int(roi_coord[3]*0.8), max_size_y=int(roi_coord[3]*1.2), \
+        use_background=use_background)
+
+    # ==== Loop ===
+    score = np.zeros((len(mask_bb),1))
+    for i in range(len(mask_bb)):
+        # Skip first image
+        if i == 0:
+            continue        
+        # Predict bounding box
+        x,y,w,h,predictions_resampled, predictions, weights = pFilter.transition_state(frames[i])
+        xm, ym, wm, hm = mask_bb[i]
+        
+        score[i] = get_bb_iou(x,y,w,h, xm, ym, wm, hm)
+
+    return np.mean(score), params
+
+if __name__=="__main__":
+    dir_imgs = "./sequences-train/"
+    dir_mask = "./sequences-train/"
+    video_names = ["octopus"] # cow octopus fish
+
+    n_processes = 12
+    
+    n_particles_arr = [500]
+    dt_arr = [0.001, 0.0005, 0.05, 0.1]
+    sigma_arr = [(1.0,1,0.1,0.1), (2.5,2.5,0.25,0.25), (2.5,2.5,2.5,2.5)]
+    hist_size_arr = [16, 8, 4]
+    use_background_arr = [False, True]
+
+    for video_name in video_names:
+
+        mask_bb = []
+        for i, filename in enumerate(glob.glob(dir_imgs + video_name +'/*.bmp')):
+            mask_path = dir_mask + video_name +"/"+ video_name + '-'+ str(i+1).zfill(3) + '.png'
+            bb = get_bb_from_mask(mask_path)
+            mask_bb.append(bb)    
+        
+        frames = []
+        for i, filename in enumerate(glob.glob(dir_imgs + video_name +'/*.bmp')):
+            frame = cv2.imread(filename)
+            frames.append(frame)
+        frames = np.array(frames)
+
+        with mp.Pool(processes=n_processes) as pool:
+
+            results = []
+            for use_background in use_background_arr:
+                for n_particles in n_particles_arr:
+                    for hist_size in hist_size_arr:
+                        for sigma in sigma_arr:
+                            for dt in dt_arr:
+                                params = {
+                                        "dt":dt,
+                                        "use_background":use_background,
+                                        "n_particles":n_particles,
+                                        "hist_size":hist_size,
+                                        "sigma":sigma,
+                                    }
+                                res = pool.apply_async(run_model, (mask_bb, frames, params,))      # runs in *only* one process
+                                results.append(res)
+
+            best_score_bgd = 0.0 
+            best_params_bgd = None
+            best_score = 0.0
+            best_params = None
+            for res in results:
+                iou_score, params = res.get()
+                if params["use_background"]:
+                    if iou_score > best_score_bgd:
+                        best_score_bgd = iou_score
+                        best_params_bgd = params
+                else:
+                    if iou_score > best_score:
+                        best_score = iou_score
+                        best_params = params
+
+        print("====Sequence:{:s}====".format(video_name))    
+        print("Best score: {:4.3f}.\nParams:".format(best_score))
+        for k,v in best_params.items():
+            print("\t{:s}:".format(k), v)
+        
+        print("Best score: {:4.3f}.\nParams with BGD:".format(best_score_bgd))
+        for k,v in best_params_bgd.items():
+            print("\t{:s}:".format(k), v)
+
+        
