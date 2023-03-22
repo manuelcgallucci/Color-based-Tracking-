@@ -18,6 +18,23 @@ def get_bb_score(x1, y1, w1, h1, x2, y2, w2, h2):
     ''' Return the distance between centers of masks'''
     return  np.sqrt(((x1 + w1//2) - (x2 + w2//2))**2 + ((y1 + h1//2) - (y2 + h2//2))**2)
 
+def get_bb_iou(x1, y1, w1, h1, x2, y2, w2, h2):
+
+    x_left = max(x1, x2)
+    y_top = max(y1, y2)
+    x_right = min(x1+w1, x2+w2)
+    y_bottom = min(y1+h1, y2+h2)
+
+    if x_right < x_left or y_bottom < y_top:
+        return 0.0
+
+    # The intersection of two axis-aligned bounding boxes is always an
+    # axis-aligned bounding box
+    intersection_area = (x_right - x_left) * (y_bottom - y_top)
+    a1 = w1*h1
+    a2 = w2*h2
+    
+    return intersection_area / float(a1 + a2 - intersection_area)
 
 '''
 ####A rajouter dans le main.py
