@@ -48,10 +48,16 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64, s
 	# Define the intial conditions of the model
 	if type_== 'probabilistic':
 
-		pFilter = ParticleFilter(roi_coord[0], roi_coord[1], roi_coord[2], roi_coord[3], roi, \
-            window_size=frameSize, n_particles=1000, dt=0.2, sigma=[5,5,0.5,0.5], hist_size=16, lambda_=20, 
+		pFilter = ParticleFilter(roi_coord[0], roi_coord[1], roi_coord[2], roi_coord[3], roi, frameSize, \
+            frame, n_particles=2000, dt=0.01, sigma=[5,5,5,5], hist_size=8, lambda_=20, 
             min_size_x=int(roi_coord[2]*0.8), max_size_x=int(roi_coord[2]*1.2),
-            min_size_y=int(roi_coord[3]*0.8), max_size_y=int(roi_coord[3]*1.2))
+            min_size_y=int(roi_coord[3]*0.8), max_size_y=int(roi_coord[3]*1.2), use_background=False)
+
+		# Best octopus:
+		# pFilter = ParticleFilter(roi_coord[0], roi_coord[1], roi_coord[2], roi_coord[3], roi, frameSize, \
+        #     frame, n_particles=4000, dt=0.05, sigma=[5,5,5,5], hist_size=32, lambda_=20, 
+        #     min_size_x=int(roi_coord[2]*0.8), max_size_x=int(roi_coord[2]*1.2),
+        #     min_size_y=int(roi_coord[3]*0.8), max_size_y=int(roi_coord[3]*1.2), use_background=True)
 	
 	elif type_=='meanshift':
 		# Setup the ROI for tracking
@@ -62,6 +68,7 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64, s
 		# Setup the termination criteria, either 10 iteration or move by at least 1 pt
 		term_crit = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
 
+	centroids = []
 	# ==== Loop ===
 	for i, filename in enumerate(glob.glob(dir_imgs + video_name +'/*.bmp')):
 		# Skip first image
@@ -82,7 +89,7 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64, s
 		xm, ym, wm, hm = get_bb_from_mask(mask_path)
 		score.append(get_bb_score(x,y,w,h, xm, ym, wm, hm))
 		# TODO: add output centroids.npy
-		
+		centroids.append((x+w/2, y+h/2))
 		
 		
 		# Draw rectangle
@@ -94,7 +101,8 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64, s
 		if show: cv2.imshow('frame',frame)
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break      
-	
+	print(np.mean(np.array(score)))
+	np.save('./output/{:s}/{:s}_scores.npy'.format(type_, video_name), np.array(score))
 	video_writer.release()
 
 	plt.figure()
@@ -108,9 +116,12 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=64, s
 if __name__=="__main__":
 	dir_imgs = "./sequences-train/"
 	dir_mask = "./sequences-train/"
-	video_names = ["bag", "book", "bear", "bag", "camel", "rhino", "swan"]
-	type_ = "meanshift"
+	types = ["probabilistic"]#, "probabilistic"]
 	show = False
 	
+	video_names = ["octopus", "cow", "fish"]
+	video_names = ["cow"]
 	for video_name in video_names:		
-		main(dir_imgs, dir_mask, video_name, type_=type_, show=show)
+		for type_ in types:
+			main(dir_imgs, dir_mask, video_name, type_=type_, show=show)
+		
