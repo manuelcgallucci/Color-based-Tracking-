@@ -19,34 +19,27 @@ def get_bb_score(x1, y1, w1, h1, x2, y2, w2, h2):
     ''' Return the distance between centers of masks'''
     return  np.sqrt(((x1 + w1//2) - (x2 + w2//2))**2 + ((y1 + h1//2) - (y2 + h2//2))**2)
 
+def change_hist(old_hist, new_hist, alpha):
+    n = len(old_hist)
+    old_peak = np.argmax(old_hist)
+    new_peak = np.argmax(new_hist)
+    peak = int(old_peak * alpha + new_peak * (1-alpha))
+    hist = np.zeros(n)
 
-'''
-####A rajouter dans le main.py
-from functions import get_bb_from_mask, get_bb_score
-
-#in fucntion
-
-score = []
-name = 'whateverthenameis'
-i=0
-
-while True: 
-    frame = cv.imread('sequences-train/'+ name +'/' + name + '-'+ str(i).zfill(3) + '.bmp')
-    #x,y,w,h,predictions_resampled, predictions = pFilter.transition_state(frame)
-
-    mask_path = 'sequences-train/'+ name +'/' +name + '-'+ str(i).zfill(3) + '.png'
-
-    xm, ym, wm, hm = get_bb_from_mask(mask_path)
-    #score.append(x,y,w,h,xm, ym, wm, hm)
-
+    for val in old_hist:
+        if old_peak > peak:
+            for i in range(n-peak):         #on décale l'histogramme, des valeurs sont supprimées et les autres resteront à 0
+                hist[i] = old_hist[i+peak]
+        if old_peak < peak:
+            for i in range(peak, n):
+                hist[i] = old_hist[i-peak]
+        if old_peak == peak:
+            hist = np.copy(old_hist)
+    
+    return hist
 
 
-import matplotlib.pyplot as plt
-plt.plot(score, title= "distance between bb center through iterations")
-plt.show()
-'''
-
-def meanshift_function(video_name, show_video = True):
+def meanshift_function(video_name, alpha, show_video = True, ):
     cap = cv2.VideoCapture('output/'+video_name+'.mp4')
     mask_path = 'sequences-train/'+ video_name +'/'+ video_name + '-'+ str(1).zfill(3) + '.png'
 
@@ -70,9 +63,9 @@ def meanshift_function(video_name, show_video = True):
     cv2.normalize(init_roi_hist,init_roi_hist,0,255,cv2.NORM_MINMAX)
 
     score = []
-    hist_list = []
-    roi_hist_iter = init_roi_hist
-    hist_list.append(roi_hist_iter)
+    hist_peak = []
+    hist_iter = init_roi_hist
+    hist_peak.append(np.argmax(hist_iter))
     i = 1
 
 
@@ -82,7 +75,7 @@ def meanshift_function(video_name, show_video = True):
         if ret == True:
             # MEANSHIFT
             hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-            dst = cv2.calcBackProject([hsv],[0],init_roi_hist,[0,180],1)
+            dst = cv2.calcBackProject([hsv],[0],hist_iter,[0,180],1)
             ret, track_window = cv2.meanShift(dst, track_window, term_crit)
             x,y,w,h = track_window
             # Try to instead of doing a ponderate mean of the 2 histograms, do a translation of the median / search for MAP (variance pondered by the median)
@@ -94,11 +87,13 @@ def meanshift_function(video_name, show_video = True):
             roi = frame[y:y+h, x:x+w]
             hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
             mask = cv2.inRange(hsv_roi, np.array((0., 12.,25.)), np.array((180.,255.,255.)))
-            roi_hist_iter = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
-            cv2.normalize(roi_hist_iter,roi_hist_iter,0,255,cv2.NORM_MINMAX)
+            new_hist_iter = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
+            cv2.normalize(new_hist_iter,new_hist_iter,0,255,cv2.NORM_MINMAX)
+
             # Updated histogram is proportional to the original and the recalculated in this frame by a factor of alpha
-            #roi_hist_iter = alpha*init_roi_hist + (1-alpha)*roi_hist_iter
-            hist_list.append(roi_hist_iter)
+            hist_iter = change_hist(hist_iter, new_hist_iter, alpha)
+
+            hist_peak.append(np.argmax(hist_iter))
             
             ## DRAWING
             if show_video:
@@ -123,19 +118,32 @@ def meanshift_function(video_name, show_video = True):
     cap.release()
     print('Meanshift have been performed for ' + video_name)
 
-    return score , hist_list
+    return score , hist_peak
 
 '''
+
 names = ['bag', 'bear', 'book', 'camel', 'rhino', 'swan']
 with plt.style.context('bmh'):
     fig, ax = plt.subplots(2,3, figsize=(20,10))
-    fig.suptitle('Histogram for each last bounding box', fontsize = 20)
+    fig.suptitle('Hue of the peak value and score through images', fontsize = 20)
     for i,name in enumerate(names):
-        score, hist_list = meanshift_function(name, False)
+        score, hist_peak = meanshift_function(name, 0.9,False)
         ax[i%2, i%3].set_title(name)
         #ax[i%2, i%3].axis('off')
-        ax[i%2, i%3].plot(hist_list[-1])
+        ax[i%2, i%3].plot(hist_peak, color='b', label='Peak hue value')
+        ax[i%2, i%3].legend()
+        ax2 = ax[i%2, i%3].twinx()
+        ax2.plot(score, color='r', label='Score')
+        ax2.legend()
 
-    fig.savefig('./Plots/histogram_visual_last.jpg')
+
+
+    fig.savefig('./Plots/histogram_score&peakhue_with_changing.jpg')
 plt.show()
 '''
+
+
+
+            
+
+    
