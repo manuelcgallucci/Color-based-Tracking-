@@ -40,10 +40,11 @@ def main(hist_size=64):
     # print("Coords:", roi_coord)
     
     # Define the intial conditions of the model
-    pFilter = ParticleFilter(roi_coord[0], roi_coord[1], roi_coord[2], roi_coord[3], roi_cropped, \
-            window_size=window_size, n_particles=200, dt=0.1, sigma=[10,10,0.5,0.5], hist_size=32, lambda_=20, 
-            min_size_x=int(roi_coord[2]*0.8), max_size_x=int(roi_coord[2]*1.2),
-            min_size_y=int(roi_coord[3]*0.8), max_size_y=int(roi_coord[3]*1.2))
+    pFilter = ParticleFilter(roi_coord[0], roi_coord[1], roi_coord[2], roi_coord[3], roi_cropped, window_size, \
+        frame, n_particles=100, dt=0.01, sigma=[10,10,0.5,0.5], hist_size=hist_size, lambda_=10, \
+        min_size_x=int(roi_coord[2]*0.8), max_size_x=int(roi_coord[2]*1.2), \
+        min_size_y=int(roi_coord[3]*0.8), max_size_y=int(roi_coord[3]*1.2), \
+        use_background=False)
 
 
     #cv2.namedWindow('Best histogram')
