@@ -85,8 +85,7 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=180, 
 		xm, ym, wm, hm = get_bb_from_mask(mask_path)
 		score.append(get_bb_score(x,y,w,h, xm, ym, wm, hm))
 		# TODO: add output centroids.npy
-		centroid = (xm+wm/2,ym+hm/2)
-		np.append(centroids, centroid)
+		centroids = np.append(centroids, get_bb_score(x,y,w,h, xm, ym, wm, hm))
 		
 		# Draw rectangle
 		cv2.rectangle(frame,(int(xm),int(ym)),(int(xm+wm),int(ym+hm)),(0,255,0),thickness=2)
@@ -103,23 +102,24 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=180, 
 	video_writer.release()
 	
 	#  save centroids.npy output
-	np.save("./output/centroids_{:s}_{:s}".format(video_name, type_), centroids)
+	np.save("./output/team6_{:s}_centroids_{:s}".format(video_name, type_), centroids)
+	print("score mean for {:s}: ".format(video_name), np.mean(score))
 	
 	#  plot score
 	plt.figure()
 	plt.plot(score)
-	plt.title("Score squence:{:s} {:s}".format(video_name, type_))
+	plt.title("Score squence : {:s} {:s}".format(video_name, type_))
 	plt.xlabel("Frames")
 	if show: plt.show()
-	plt.savefig("./output/{:s}/{:s}_score_{:s}.png".format(type_,video_name, type_))
+	plt.savefig("./output/{:s}/{:s}_score_{:s}.jpg".format(type_,video_name, type_))
 	plt.close()
 
 if __name__=="__main__":
-	dir_imgs = "./sequences-train/"
-	dir_mask = "./sequences-train/"
-	video_names = ["bag", "book", "bear", "bag", "camel", "rhino", "swan"]
+	dir_imgs = "./sequences-test/sequences-test/"
+	dir_mask = "./sequences-test/sequences-test/"
+	video_names = ["cow", "fish", "octopus"] #["bag", "book", "bear", "camel", "rhino", "swan"]
 	type_ = "meanshift"
-	show = False
+	show = True
 	hist_size = 180
 	
 	for video_name in video_names:		
