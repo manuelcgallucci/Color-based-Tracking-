@@ -38,6 +38,8 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=180, 
 
 	# Initialize performance metrics and outputs
 	score = []
+	centroids = []
+	centroids = np.array(centroids)
 	fps = 24
 	video_writer = cv2.VideoWriter('./output/{:s}/{:s}_{:s}.mp4'.format(type_, video_name, type_), cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), fps, frameSize)
 
@@ -83,7 +85,9 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=180, 
 		xm, ym, wm, hm = get_bb_from_mask(mask_path)
 		score.append(get_bb_score(x,y,w,h, xm, ym, wm, hm))
 		# TODO: add output centroids.npy
-
+		centroid = (xm+wm/2,ym+hm/2)
+		np.append(centroids, centroid)
+		
 		# Draw rectangle
 		cv2.rectangle(frame,(int(xm),int(ym)),(int(xm+wm),int(ym+hm)),(0,255,0),thickness=2)
 		cv2.rectangle(frame, (x,y), (x+w,y+h), (0,0,255), thickness=2)
@@ -97,7 +101,11 @@ def main(dir_imgs, dir_masks, video_name, type_='probabilistic', hist_size=180, 
 		
 	#  plot_color_hist(roi_hist_iter)
 	video_writer.release()
-
+	
+	#  save centroids.npy output
+	np.save("./output/centroids_{:s}_{:s}".format(video_name, type_), centroids)
+	
+	#  plot score
 	plt.figure()
 	plt.plot(score)
 	plt.title("Score squence:{:s} {:s}".format(video_name, type_))
