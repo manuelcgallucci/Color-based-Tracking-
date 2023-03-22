@@ -5,4 +5,4 @@ And comparison with the mean shift algorithm
 
 Example using the Meanshift algorithm
 
-<img src="./output/meanshift/fish_meanshift.gif" width="400" height="400" />
+<img src="./output/meanshift/fish_meanshift.gif" />
