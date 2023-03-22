@@ -39,7 +39,7 @@ def change_hist(old_hist, new_hist, alpha):
     return hist
 
 
-def meanshift_function(video_name, alpha, show_video = True, ):
+def meanshift_function(video_name, alpha=0.9, show_video = True, ):
     cap = cv2.VideoCapture('output/'+video_name+'.mp4')
     mask_path = 'sequences-train/'+ video_name +'/'+ video_name + '-'+ str(1).zfill(3) + '.png'
 
@@ -92,6 +92,7 @@ def meanshift_function(video_name, alpha, show_video = True, ):
 
             # Updated histogram is proportional to the original and the recalculated in this frame by a factor of alpha
             hist_iter = change_hist(hist_iter, new_hist_iter, alpha)
+            
 
             hist_peak.append(np.argmax(hist_iter))
             
@@ -100,7 +101,9 @@ def meanshift_function(video_name, alpha, show_video = True, ):
                 img2 = cv2.rectangle(frame, (x,y), (x+w,y+h), 255,2)
                 cv2.imshow('Image video',img2)
             
+
             ## SCORE
+            print(i)
             mask_path = 'sequences-train/'+ video_name +'/'+ video_name + '-'+ str(i).zfill(3) + '.png'
             xm, ym, wm, hm = get_bb_from_mask(mask_path)
             score.append(get_bb_score(x,y,w,h, xm, ym, wm, hm))
@@ -120,7 +123,6 @@ def meanshift_function(video_name, alpha, show_video = True, ):
 
     return score , hist_peak
 
-'''
 
 names = ['bag', 'bear', 'book', 'camel', 'rhino', 'swan']
 with plt.style.context('bmh'):
@@ -140,9 +142,6 @@ with plt.style.context('bmh'):
 
     fig.savefig('./Plots/histogram_score&peakhue_with_changing.jpg')
 plt.show()
-'''
-
-
 
             
 

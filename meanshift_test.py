@@ -14,9 +14,10 @@ import pandas as pd
 
 # For getting performance 
 
-''' 
+# names = ['bag', 'bear', 'book', 'camel', 'rhino', 'swan'] # train set
 
-names = ['bag', 'bear', 'book', 'camel', 'rhino', 'swan']
+names = ['cow', 'fish', 'octopus'] # test set
+
 scores = [[] for j in range(len(names))]
 score_mean = np.zeros((len(names)))
 
@@ -24,7 +25,7 @@ fig, ax = plt.subplots(len(names), 1, sharey='row', figsize = (200,100))
 for i, name in enumerate(names):
     ax[i].set_ylabel(name)
     
-    score, hist_list = meanshift_function(name)
+    score, hist_list = meanshift_function(name, show_video=True)
     scores[i] = score
     score_mean[i] = np.mean(score)
     ax[i].plot(score)
@@ -37,21 +38,15 @@ score_df.index = ['Centroid distance']
 score_df['mean'] = score_df.mean(axis=1)
 print(score_df) 
 
-mean_array = np.array(score_df['mean'])
-np.save('.\PLots', mean_array)
-#plt.show()
+for i,name in enumerate(names):
+    path = '8-'+name + '-centroids.npy'
+    np.save(path, scores[i])
 
-#plt.figure()
-#plt.plot(score_df['mean'])
-#plt.title('Evolution of the mean error on the test dataset with alpha')
-#plt.xlabel('alpha value')
-#plt.ylabel('Distance between centroids')
-#plt.show()
-'''
+
 
 # For plotting the evolution of the score with alpha
 
-
+'''
 names = ['bag', 'bear', 'book', 'camel', 'rhino', 'swan']
 alphas = np.arange(0, 1.1, 0.1)
 score_mean = np.zeros((len(names), len(alphas)))
@@ -81,8 +76,20 @@ with plt.style.context('bmh'):
     fig.savefig('./Plots/histogram_score&peakhue_with_changing_only_int.jpg')
 
 plt.show()
-
+'''
 
 #### REsULTS
 # We saw that alpha != 1 isn't effiicent when it's only a ponderate mean of the 2 distributions
 # Update: even when we translate progessively the hist, the better aren't best
+
+names = ['cow', 'fish', 'octopus']
+plt.figure()
+for name in names:
+    path = '8-'+name + '-centroids.npy'
+    score = np.load(path)
+    plt.plot(score, label=name)
+
+plt.xlabel('nb of frame')
+plt.ylabel('distance of centroids')
+plt.legend()
+plt.show()
