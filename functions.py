@@ -1,5 +1,6 @@
 import cv2 as cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
 def get_bb_from_mask(mask_path):
     ''' Return the bounding box coordinates that fits the best the mask'''
@@ -35,33 +36,27 @@ def get_bb_iou(x1, y1, w1, h1, x2, y2, w2, h2):
     a2 = w2*h2
     
     return intersection_area / float(a1 + a2 - intersection_area)
+def change_hist(old_hist, new_hist, alpha):
+    n = len(old_hist)
+    old_peak = np.argmax(old_hist)
+    new_peak = np.argmax(new_hist)
+    peak = int(old_peak * alpha + new_peak * (1-alpha))
+    hist = np.zeros(n)
 
-'''
-####A rajouter dans le main.py
-from functions import get_bb_from_mask, get_bb_score
-
-#in fucntion
-
-score = []
-name = 'whateverthenameis'
-i=0
-
-while True: 
-    frame = cv.imread('sequences-train/'+ name +'/' + name + '-'+ str(i).zfill(3) + '.bmp')
-    #x,y,w,h,predictions_resampled, predictions = pFilter.transition_state(frame)
-
-    mask_path = 'sequences-train/'+ name +'/' +name + '-'+ str(i).zfill(3) + '.png'
-
-    xm, ym, wm, hm = get_bb_from_mask(mask_path)
-    #score.append(x,y,w,h,xm, ym, wm, hm)
-
+    for val in old_hist:
+        if old_peak > peak:
+            for i in range(n-peak):         #on décale l'histogramme, des valeurs sont supprimées et les autres resteront à 0
+                hist[i] = old_hist[i+peak]
+        if old_peak < peak:
+            for i in range(peak, n):
+                hist[i] = old_hist[i-peak]
+        if old_peak == peak:
+            hist = np.copy(old_hist)
+    
+    return hist
 
 
-import matplotlib.pyplot as plt
-plt.plot(score, title= "distance between bb center through iterations")
-plt.show()
-'''
-def meanshift_function(video_name, alpha):
+def meanshift_function(video_name, alpha=0.9, show_video = True, ):
     cap = cv2.VideoCapture('output/'+video_name+'.mp4')
     mask_path = 'sequences-train/'+ video_name +'/'+ video_name + '-'+ str(1).zfill(3) + '.png'
 
@@ -71,63 +66,64 @@ def meanshift_function(video_name, alpha):
 
     # select initial location of window
     roi_coord = get_bb_from_mask(mask_path)
-    #cv2.destroyAllWindows()
-
-    # setup initial location of window
-    # r,h,c,w - region of image
-    #           simply hardcoded the values
     r,h,c,w = int(roi_coord[1]),int(roi_coord[3]),int(roi_coord[0]),int(roi_coord[2])
     track_window = (c,r,w,h)
-
-    # # set up the ROI for tracking
-    roi = frame[r:r+h, c:c+w]
-    hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-    mask = cv2.inRange(hsv_roi, np.array((0., 60.,32.)), np.array((180.,255.,255.)))
-    roi_hist = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
-    cv2.normalize(roi_hist,roi_hist,0,255,cv2.NORM_MINMAX)
-
     # Setup the termination criteria, either 10 iteration or move by at least 1 pt
     term_crit = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
 
-    # Writer to save video file:
-    # get cap properties
-    width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))   # float `width` to int
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))  # float `height` to int
-    fps = int(cap.get(cv2.CAP_PROP_FPS))
-    frameSize = (width,height)
+
+    ## INITIALISATION
+    roi = frame[r:r+h, c:c+w]
+    hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsv_roi, np.array((0., 25., 50.)), np.array((180.,255.,255.)))
+    init_roi_hist = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
+    cv2.normalize(init_roi_hist,init_roi_hist,0,255,cv2.NORM_MINMAX)
 
     score = []
-    i=1
-    # histogram updating parameter
-    roi_hist_iter = roi_hist
+    hist_peak = []
+    hist_iter = init_roi_hist
+    hist_peak.append(np.argmax(hist_iter))
+    i = 1
+
+
     while(1):
         ret ,frame = cap.read()
 
         if ret == True:
+            # MEANSHIFT
             hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-            dst = cv2.calcBackProject([hsv],[0],roi_hist_iter,[0,180],1)
-
-            # apply meanshift to get the new location
+            dst = cv2.calcBackProject([hsv],[0],hist_iter,[0,180],1)
             ret, track_window = cv2.meanShift(dst, track_window, term_crit)
-
-            # update reference histogram
             x,y,w,h = track_window
-            mask_path = 'sequences-train/'+ video_name +'/'+ video_name + '-'+ str(i).zfill(3) + '.png'
+            # Try to instead of doing a ponderate mean of the 2 histograms, do a translation of the median / search for MAP (variance pondered by the median)
 
+            
+            ## UPDATING THE HISTOGRAM
+            
+            
+            roi = frame[y:y+h, x:x+w]
+            hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+            mask = cv2.inRange(hsv_roi, np.array((0., 12.,25.)), np.array((180.,255.,255.)))
+            new_hist_iter = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
+            cv2.normalize(new_hist_iter,new_hist_iter,0,255,cv2.NORM_MINMAX)
+
+            # Updated histogram is proportional to the original and the recalculated in this frame by a factor of alpha
+            hist_iter = change_hist(hist_iter, new_hist_iter, alpha)
+            
+
+            hist_peak.append(np.argmax(hist_iter))
+            
+            ## DRAWING
+            if show_video:
+                img2 = cv2.rectangle(frame, (x,y), (x+w,y+h), 255,2)
+                cv2.imshow('Image video',img2)
+            
+
+            ## SCORE
+            print(i)
+            mask_path = 'sequences-train/'+ video_name +'/'+ video_name + '-'+ str(i).zfill(3) + '.png'
             xm, ym, wm, hm = get_bb_from_mask(mask_path)
             score.append(get_bb_score(x,y,w,h, xm, ym, wm, hm))
-
-            roi = frame[y:y+h, x:x+w]
-            hsv_roi = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-            mask = cv2.inRange(hsv_roi, np.array((0., 60.,32.)), np.array((180.,255.,255.)))
-            roi_hist_iter = cv2.calcHist([hsv_roi],[0],mask,[180],[0,180])
-            cv2.normalize(roi_hist_iter,roi_hist_iter,0,255,cv2.NORM_MINMAX)
-            # Updated histogram is proportional to the original and the recalculated in this frame by a factor of alpha
-            roi_hist_iter = alpha*roi_hist + (1-alpha)*roi_hist_iter
-
-            # draw it on image
-            img2 = cv2.rectangle(frame, (x,y), (x+w,y+h), 255,2)
-            cv2.imshow('img2',img2)
 
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -140,7 +136,30 @@ def meanshift_function(video_name, alpha):
 
     cv2.destroyAllWindows()
     cap.release()
-    print('One meanshift have been performed')
+    print('Meanshift have been performed for ' + video_name)
+
+    return score , hist_peak
 
 
-    return score
+names = ['bag', 'bear', 'book', 'camel', 'rhino', 'swan']
+with plt.style.context('bmh'):
+    fig, ax = plt.subplots(2,3, figsize=(20,10))
+    fig.suptitle('Hue of the peak value and score through images', fontsize = 20)
+    for i,name in enumerate(names):
+        score, hist_peak = meanshift_function(name, 0.9,False)
+        ax[i%2, i%3].set_title(name)
+        #ax[i%2, i%3].axis('off')
+        ax[i%2, i%3].plot(hist_peak, color='b', label='Peak hue value')
+        ax[i%2, i%3].legend()
+        ax2 = ax[i%2, i%3].twinx()
+        ax2.plot(score, color='r', label='Score')
+        ax2.legend()
+
+
+
+    fig.savefig('./Plots/histogram_score&peakhue_with_changing.jpg')
+plt.show()
+
+            
+
+    
